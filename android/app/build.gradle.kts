@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.jagmag" // Ensure this matches your actual package name
-    compileSdk = 35
+    compileSdk = 36
 
     ndkVersion = "27.0.12077973" // Keep your specified NDK version
     

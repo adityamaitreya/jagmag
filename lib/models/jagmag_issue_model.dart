@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class JagmagIssue {
   final String id;
   final String description;
-  final String category;
   final String urgency;
   final String imageUrl;
   final DateTime timestamp;
@@ -34,7 +33,6 @@ class JagmagIssue {
   JagmagIssue({
     required this.id,
     required this.description,
-    required this.category,
     required this.urgency,
     required this.imageUrl,
     required this.timestamp,
@@ -68,7 +66,6 @@ class JagmagIssue {
     return JagmagIssue(
       id: doc.id,
       description: data['description'] ?? '',
-      category: data['category'] ?? '',
       urgency: data['urgency'] ?? '',
       imageUrl: data['imageUrl'] ?? '',
       timestamp: (data['timestamp'] as Timestamp).toDate(),
@@ -82,30 +79,30 @@ class JagmagIssue {
       voters: Map<String, String>.from(data['voters'] ?? {}),
       commentsCount: data['commentsCount'] ?? 0,
       affectedUsersCount: data['affectedUsersCount'],
-      affectedUserIds: data['affectedUserIds'] != null 
-          ? List<String>.from(data['affectedUserIds']) 
+      affectedUserIds: data['affectedUserIds'] != null
+          ? List<String>.from(data['affectedUserIds'])
           : null,
       originalSpokenText: data['originalSpokenText'],
       userInputLanguage: data['userInputLanguage'],
       aiRiskAnalysis: data['aiRiskAnalysis'],
-      resolutionTimestamp: data['resolutionTimestamp'] != null 
-          ? (data['resolutionTimestamp'] as Timestamp).toDate() 
+      resolutionTimestamp: data['resolutionTimestamp'] != null
+          ? (data['resolutionTimestamp'] as Timestamp).toDate()
           : null,
       lastStatusUpdateBy: data['lastStatusUpdateBy'],
-      lastStatusUpdateAt: data['lastStatusUpdateAt'] != null 
-          ? (data['lastStatusUpdateAt'] as Timestamp).toDate() 
+      lastStatusUpdateAt: data['lastStatusUpdateAt'] != null
+          ? (data['lastStatusUpdateAt'] as Timestamp).toDate()
           : null,
       isUnresolved: data['isUnresolved'] ?? true,
       duplicateOfIssueId: data['duplicateOfIssueId'],
-      evidenceImages: data['evidenceImages'] != null 
-          ? List<String>.from(data['evidenceImages']) 
+      evidenceImages: data['evidenceImages'] != null
+          ? List<String>.from(data['evidenceImages'])
           : null,
       collaborationCount: data['collaborationCount'],
-      lastCollaborationAt: data['lastCollaborationAt'] != null 
-          ? (data['lastCollaborationAt'] as Timestamp).toDate() 
+      lastCollaborationAt: data['lastCollaborationAt'] != null
+          ? (data['lastCollaborationAt'] as Timestamp).toDate()
           : null,
-      statusUpdates: data['statusUpdates'] != null 
-          ? List<Map<String, dynamic>>.from(data['statusUpdates']) 
+      statusUpdates: data['statusUpdates'] != null
+          ? List<Map<String, dynamic>>.from(data['statusUpdates'])
           : null,
     );
   }
@@ -113,7 +110,6 @@ class JagmagIssue {
   Map<String, dynamic> toFirestore() {
     return {
       'description': description,
-      'category': category,
       'urgency': urgency,
       'imageUrl': imageUrl,
       'timestamp': Timestamp.fromDate(timestamp),
@@ -131,19 +127,19 @@ class JagmagIssue {
       'originalSpokenText': originalSpokenText,
       'userInputLanguage': userInputLanguage,
       'aiRiskAnalysis': aiRiskAnalysis,
-      'resolutionTimestamp': resolutionTimestamp != null 
-          ? Timestamp.fromDate(resolutionTimestamp!) 
+      'resolutionTimestamp': resolutionTimestamp != null
+          ? Timestamp.fromDate(resolutionTimestamp!)
           : null,
       'lastStatusUpdateBy': lastStatusUpdateBy,
-      'lastStatusUpdateAt': lastStatusUpdateAt != null 
-          ? Timestamp.fromDate(lastStatusUpdateAt!) 
+      'lastStatusUpdateAt': lastStatusUpdateAt != null
+          ? Timestamp.fromDate(lastStatusUpdateAt!)
           : null,
       'isUnresolved': isUnresolved,
       'duplicateOfIssueId': duplicateOfIssueId,
       'evidenceImages': evidenceImages,
       'collaborationCount': collaborationCount,
-      'lastCollaborationAt': lastCollaborationAt != null 
-          ? Timestamp.fromDate(lastCollaborationAt!) 
+      'lastCollaborationAt': lastCollaborationAt != null
+          ? Timestamp.fromDate(lastCollaborationAt!)
           : null,
       'statusUpdates': statusUpdates,
     };
@@ -152,7 +148,6 @@ class JagmagIssue {
   JagmagIssue copyWith({
     String? id,
     String? description,
-    String? category,
     String? urgency,
     String? imageUrl,
     DateTime? timestamp,
@@ -183,7 +178,6 @@ class JagmagIssue {
     return JagmagIssue(
       id: id ?? this.id,
       description: description ?? this.description,
-      category: category ?? this.category,
       urgency: urgency ?? this.urgency,
       imageUrl: imageUrl ?? this.imageUrl,
       timestamp: timestamp ?? this.timestamp,

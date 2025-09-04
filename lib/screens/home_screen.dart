@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/responsive_helper.dart';
 import '../widgets/placeholder_image_widget.dart';
+import '../widgets/jagmag_logo.dart';
+import '../services/jagmag_auth_service.dart';
 import 'camera_capture_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -11,10 +15,116 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final JagmagAuthService _authService = JagmagAuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _recentIssues = [];
+  String _userLocation = 'Loading location...';
   int _selectedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      // Sign in anonymously if not already signed in
+      if (!_authService.isLoggedIn) {
+        await _authService.signInAnonymously();
+      }
+
+      // Load recent issues
+      await _loadRecentIssues();
+
+      // Get user location
+      await _getUserLocation();
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error initializing app: $e')));
+      }
+    }
+  }
+
+  Future<void> _loadRecentIssues() async {
+    try {
+      final snapshot = await _firestore
+          .collection('issues')
+          .orderBy('timestamp', descending: true)
+          .limit(5)
+          .get();
+
+      setState(() {
+        _recentIssues = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'description': data['description'] ?? '',
+            'urgency': data['urgency'] ?? 'Medium Priority',
+            'status': data['status'] ?? 'Pending',
+            'timestamp': data['timestamp'],
+            'imageUrls': data['imageUrls'] ?? [],
+            'upvotes': data['upvotes'] ?? 0,
+            'downvotes': data['downvotes'] ?? 0,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      // Handle error silently for now
+      setState(() {
+        _recentIssues = [];
+      });
+    }
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      // This would typically use a location service
+      // For now, we'll use a placeholder
+      setState(() {
+        _userLocation = 'Mumbai, Maharashtra';
+      });
+    } catch (e) {
+      setState(() {
+        _userLocation = 'Location unavailable';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.blue[600]),
+              const SizedBox(height: 20),
+              Text(
+                'Loading Jagmag...',
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.getFontSize(context, 16),
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -73,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            'Bangalore, Karnataka',
+            _userLocation,
             style: TextStyle(
               color: Colors.grey[600],
               fontSize: ResponsiveHelper.getFontSize(context, 16),
@@ -88,20 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeaderSection() {
     return Row(
       children: [
-        // Streetlight Icon
-        Container(
-          width: ResponsiveHelper.isMobile(context) ? 60 : 70,
-          height: ResponsiveHelper.isMobile(context) ? 60 : 70,
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Icon(
-            Icons.lightbulb,
-            color: Colors.orange[400],
-            size: ResponsiveHelper.getIconSize(context, 35),
-          ),
-        ),
+        // Jagmag Logo
+        JagmagLogo(size: ResponsiveHelper.isMobile(context) ? 60 : 70),
 
         const SizedBox(width: 20),
 
@@ -111,18 +209,18 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Got an Issue?',
+                'Report Streetlight Issues',
                 style: TextStyle(
                   fontSize: ResponsiveHelper.getFontSize(context, 24),
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: Colors.grey[800],
                 ),
               ),
               const SizedBox(height: 5),
               Text(
-                'JAGMAG has a find.',
+                'Help keep your neighborhood safe and well-lit',
                 style: TextStyle(
-                  fontSize: ResponsiveHelper.getFontSize(context, 16),
+                  fontSize: ResponsiveHelper.getFontSize(context, 14),
                   color: Colors.grey[600],
                 ),
               ),
@@ -155,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              elevation: 0,
             ),
             child: Text(
               'Report',
@@ -212,54 +309,123 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 15),
 
-        // Issue Cards
-        _buildIssueCard(
-          imageType: 'streetlight',
-          title: 'Street light not working',
-          location: 'MG Road',
-          time: '2 hours ago',
-          status: 'Pending',
-          statusColor: Colors.orange[100]!,
-          statusTextColor: Colors.orange[800]!,
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildIssueCard(
-          imageType: 'pothole',
-          title: 'Pothole on main street',
-          location: 'Brigade Road',
-          time: '4 hours ago',
-          status: 'In Progress',
-          statusColor: Colors.blue[100]!,
-          statusTextColor: Colors.blue[800]!,
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildIssueCard(
-          imageType: 'water_leakage',
-          title: 'Water leakage',
-          location: 'Koramangala',
-          time: '6 hours ago',
-          status: 'Resolved',
-          statusColor: Colors.green[100]!,
-          statusTextColor: Colors.green[800]!,
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildIssueCard(
-          imageType: 'garbage',
-          title: 'Garbage not collected',
-          location: 'Indiranagar',
-          time: '1 day ago',
-          status: 'Pending',
-          statusColor: Colors.orange[100]!,
-          statusTextColor: Colors.orange[800]!,
-        ),
+        if (_recentIssues.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: ResponsiveHelper.getIconSize(context, 40),
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'No issues reported yet',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.getFontSize(context, 16),
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Be the first to report an issue in your area',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.getFontSize(context, 14),
+                    color: Colors.grey[500],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        else
+          ..._recentIssues
+              .map(
+                (issue) => Column(
+                  children: [
+                    _buildIssueCard(
+                      imageType: _getIssueImageType(issue['urgency']),
+                      title: issue['description'],
+                      location: 'Nearby',
+                      time: _formatTimestamp(issue['timestamp']),
+                      status: issue['status'],
+                      statusColor: _getStatusColor(issue['status']),
+                      statusTextColor: _getStatusTextColor(issue['status']),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              )
+              .toList(),
       ],
     );
+  }
+
+  String _getIssueImageType(String urgency) {
+    switch (urgency.toLowerCase()) {
+      case 'high priority':
+        return 'streetlight';
+      case 'medium priority':
+        return 'pothole';
+      case 'low priority':
+        return 'garbage';
+      default:
+        return 'streetlight';
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+        return Colors.green[100]!;
+      case 'in progress':
+        return Colors.blue[100]!;
+      case 'pending':
+        return Colors.orange[100]!;
+      default:
+        return Colors.grey[100]!;
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolved':
+        return Colors.green[800]!;
+      case 'in progress':
+        return Colors.blue[800]!;
+      case 'pending':
+        return Colors.orange[800]!;
+      default:
+        return Colors.grey[800]!;
+    }
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'Recently';
+
+    try {
+      final DateTime dateTime = timestamp.toDate();
+      final Duration difference = DateTime.now().difference(dateTime);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
   }
 
   Widget _buildIssueCard({
@@ -386,23 +552,42 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: Colors.blue[600],
         unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        selectedLabelStyle: TextStyle(
+          fontSize: ResponsiveHelper.getFontSize(context, 12),
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: ResponsiveHelper.getFontSize(context, 12),
+        ),
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.description),
-            label: 'Your reports',
+            icon: Icon(
+              Icons.home,
+              size: ResponsiveHelper.getIconSize(context, 24),
+            ),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.camera_alt),
-            label: 'Capture',
+            icon: Icon(
+              Icons.list,
+              size: ResponsiveHelper.getIconSize(context, 24),
+            ),
+            label: 'Issues',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notification',
+            icon: Icon(
+              Icons.map,
+              size: ResponsiveHelper.getIconSize(context, 24),
+            ),
+            label: 'Map',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.person,
+              size: ResponsiveHelper.getIconSize(context, 24),
+            ),
+            label: 'Profile',
+          ),
         ],
       ),
     );

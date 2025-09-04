@@ -1,17 +1,27 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:camera/camera.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../utils/responsive_helper.dart';
 import '../services/jagmag_ai_service.dart';
 import '../services/jagmag_location_service.dart';
+import '../models/jagmag_issue_model.dart';
+import '../widgets/jagmag_logo.dart';
+import 'dart:developer' as developer;
 
 class ReportDetailsScreen extends StatefulWidget {
-  final File imageFile;
+  final List<XFile> capturedImages;
+  final XFile? recordedVideo;
   final Map<String, dynamic> locationData;
 
   const ReportDetailsScreen({
     super.key,
-    required this.imageFile,
+    required this.capturedImages,
+    this.recordedVideo,
     required this.locationData,
   });
 
@@ -23,31 +33,44 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   bool _isAnalyzing = false;
   bool _isSubmitting = false;
+  bool _isUploading = false;
   Map<String, dynamic>? _aiAnalysis;
-  String _selectedCategory = '';
   String _selectedUrgency = '';
+
+  // Upload progress
+  double _uploadProgress = 0.0;
+  List<String> _uploadedImageUrls = [];
+  String? _uploadedVideoUrl;
+
+  // Firebase services
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final Uuid _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
-    _analyzeImage();
+    _analyzeImages();
   }
 
-  Future<void> _analyzeImage() async {
+  Future<void> _analyzeImages() async {
+    if (widget.capturedImages.isEmpty) return;
+
     setState(() {
       _isAnalyzing = true;
     });
 
     try {
+      // Analyze the first image for AI insights
       final analysis = await JagmagAIService.analyzeImageAndText(
-        imageFile: widget.imageFile,
+        imageFile: File(widget.capturedImages.first.path),
         userDescription: _descriptionController.text,
       );
 
       if (mounted) {
         setState(() {
           _aiAnalysis = analysis;
-          _selectedCategory = analysis['category'] ?? '';
           _selectedUrgency = analysis['urgency'] ?? '';
           _isAnalyzing = false;
         });
@@ -57,18 +80,77 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         setState(() {
           _isAnalyzing = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error analyzing image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error analyzing image: $e')));
       }
+    }
+  }
+
+  Future<void> _uploadMedia() async {
+    setState(() {
+      _isUploading = true;
+      _uploadProgress = 0.0;
+    });
+
+    try {
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Upload images
+      for (int i = 0; i < widget.capturedImages.length; i++) {
+        final imageFile = File(widget.capturedImages[i].path);
+        final fileName = '${_uuid.v4()}.jpg';
+        final ref = _storage.ref().child('issues_images/$fileName');
+
+        final uploadTask = ref.putFile(imageFile);
+
+        // Track upload progress
+        uploadTask.snapshotEvents.listen((snapshot) {
+          if (mounted) {
+            setState(() {
+              _uploadProgress =
+                  (i + snapshot.bytesTransferred / snapshot.totalBytes) /
+                  widget.capturedImages.length;
+            });
+          }
+        });
+
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+        _uploadedImageUrls.add(downloadUrl);
+      }
+
+      // Upload video if exists
+      if (widget.recordedVideo != null) {
+        final videoFile = File(widget.recordedVideo!.path);
+        final fileName = '${_uuid.v4()}.mp4';
+        final ref = _storage.ref().child('issues_videos/$fileName');
+
+        final uploadTask = ref.putFile(videoFile);
+        final snapshot = await uploadTask;
+        _uploadedVideoUrl = await snapshot.ref.getDownloadURL();
+      }
+
+      setState(() {
+        _isUploading = false;
+        _uploadProgress = 1.0;
+      });
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+      });
+      throw Exception('Error uploading media: $e');
     }
   }
 
   Future<void> _submitReport() async {
     if (_descriptionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add a description')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please add a description')));
       return;
     }
 
@@ -77,9 +159,37 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     });
 
     try {
-      // TODO: Implement report submission to Firebase
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-      
+      // Upload media first
+      await _uploadMedia();
+
+      // Get current user
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Create issue data
+      final issueData = {
+        'description': _descriptionController.text.trim(),
+        'urgency': _selectedUrgency,
+        'imageUrls': _uploadedImageUrls,
+        'videoUrl': _uploadedVideoUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+        'location': widget.locationData,
+        'userId': currentUser.uid,
+        'username': currentUser.displayName ?? 'Anonymous',
+        'status': 'Pending',
+        'upvotes': 0,
+        'downvotes': 0,
+        'voters': {},
+        'commentsCount': 0,
+        'isUnresolved': true,
+        'aiAnalysis': _aiAnalysis,
+      };
+
+      // Save to Firestore
+      await _firestore.collection('issues').add(issueData);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Report submitted successfully!')),
@@ -88,9 +198,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting report: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error submitting report: $e')));
       }
     } finally {
       if (mounted) {
@@ -114,12 +224,18 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        title: Text(
-          'Report Issue',
-          style: TextStyle(
-            fontSize: ResponsiveHelper.getFontSize(context, 18),
-            fontWeight: FontWeight.w600,
-          ),
+        title: Row(
+          children: [
+            JagmagLogo(size: 30),
+            const SizedBox(width: 10),
+            Text(
+              'Report Issue',
+              style: TextStyle(
+                fontSize: ResponsiveHelper.getFontSize(context, 18),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         elevation: 0,
       ),
@@ -129,30 +245,30 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            
-            // Image Successfully Captured Section
-            _buildImageSection(),
-            
+
+            // Media Preview Section
+            _buildMediaSection(),
+
             const SizedBox(height: 20),
-            
+
             // Location Section
             _buildLocationSection(),
-            
+
             const SizedBox(height: 20),
-            
+
             // Description Section
             _buildDescriptionSection(),
-            
+
             const SizedBox(height: 20),
-            
+
             // Repair Priority Section
             _buildPrioritySection(),
-            
+
             const SizedBox(height: 30),
-            
+
             // Submit Button
             _buildSubmitButton(),
-            
+
             const SizedBox(height: 20),
           ],
         ),
@@ -160,7 +276,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     );
   }
 
-  Widget _buildImageSection() {
+  Widget _buildMediaSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -173,7 +289,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              'Image Successfully Captured',
+              'Media Successfully Captured',
               style: TextStyle(
                 fontSize: ResponsiveHelper.getFontSize(context, 16),
                 fontWeight: FontWeight.w600,
@@ -183,49 +299,90 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           ],
         ),
         const SizedBox(height: 15),
-        Container(
-          width: double.infinity,
-          height: ResponsiveHelper.isMobile(context) ? 200 : 250,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey[300]!,
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+
+        // Images Grid
+        if (widget.capturedImages.isNotEmpty) ...[
+          Text(
+            'Images (${widget.capturedImages.length})',
+            style: TextStyle(
+              fontSize: ResponsiveHelper.getFontSize(context, 14),
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              children: [
-                Image.file(
-                  widget.imageFile,
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
+          const SizedBox(height: 10),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: ResponsiveHelper.isMobile(context) ? 2 : 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: widget.capturedImages.length,
+            itemBuilder: (context, index) {
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey[300]!,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[600],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: ResponsiveHelper.getIconSize(context, 16),
-                    ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(widget.capturedImages[index].path),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
                   ),
+                ),
+              );
+            },
+          ),
+        ],
+
+        // Video Preview
+        if (widget.recordedVideo != null) ...[
+          const SizedBox(height: 20),
+          Text(
+            'Video Recording',
+            style: TextStyle(
+              fontSize: ResponsiveHelper.getFontSize(context, 14),
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey[300]!,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                color: Colors.black,
+                child: const Center(
+                  child: Icon(Icons.videocam, color: Colors.white, size: 60),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -332,7 +489,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             maxLines: 4,
             maxLength: 500,
             decoration: InputDecoration(
-              hintText: 'Describe the issue you\'ve captured. Be as detailed as possible to help authorities understand and prioritize the problem.',
+              hintText:
+                  'Describe the issue you\'ve captured. Be as detailed as possible to help authorities understand and prioritize the problem.',
               hintStyle: TextStyle(
                 fontSize: ResponsiveHelper.getFontSize(context, 14),
                 color: Colors.grey[500],
@@ -352,9 +510,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               fontSize: ResponsiveHelper.getFontSize(context, 14),
             ),
             onChanged: (value) {
-              // Re-analyze if user adds description
               if (value.isNotEmpty && _aiAnalysis != null) {
-                _analyzeImage();
+                _analyzeImages();
               }
             },
           ),
@@ -408,13 +565,18 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: _getPriorityColor(_selectedUrgency),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _selectedUrgency.isNotEmpty ? _selectedUrgency : 'Analyzing...',
+                  _selectedUrgency.isNotEmpty
+                      ? _selectedUrgency
+                      : 'Analyzing...',
                   style: TextStyle(
                     fontSize: ResponsiveHelper.getFontSize(context, 12),
                     fontWeight: FontWeight.w600,
@@ -448,7 +610,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Analyzing image...',
+                  'Analyzing images...',
                   style: TextStyle(
                     fontSize: ResponsiveHelper.getFontSize(context, 14),
                     color: Colors.grey[600],
@@ -489,36 +651,61 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   }
 
   Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isSubmitting ? null : _submitReport,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue[600],
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: _isSubmitting
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(
-                'Submit Issue Report',
+    return Column(
+      children: [
+        if (_isUploading) ...[
+          Column(
+            children: [
+              Text(
+                'Uploading media...',
                 style: TextStyle(
-                  fontSize: ResponsiveHelper.getFontSize(context, 16),
-                  fontWeight: FontWeight.w600,
+                  fontSize: ResponsiveHelper.getFontSize(context, 14),
+                  color: Colors.grey[600],
                 ),
               ),
-      ),
+              const SizedBox(height: 10),
+              LinearProgressIndicator(
+                value: _uploadProgress,
+                backgroundColor: Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ],
+
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: (_isSubmitting || _isUploading) ? null : _submitReport,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: (_isSubmitting || _isUploading)
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    'Submit Issue Report',
+                    style: TextStyle(
+                      fontSize: ResponsiveHelper.getFontSize(context, 16),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
