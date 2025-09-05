@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/responsive_helper.dart';
+import '../utils/location_permission_helper.dart';
 import '../widgets/placeholder_image_widget.dart';
 import '../widgets/jagmag_logo.dart';
 import '../services/jagmag_auth_service.dart';
+import '../services/jagmag_location_service.dart';
 import 'camera_capture_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,12 +91,56 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _getUserLocation() async {
     try {
-      // This would typically use a location service
-      // For now, we'll use a placeholder
-      setState(() {
-        _userLocation = 'Mumbai, Maharashtra';
-      });
+      // Check permission first
+      bool hasPermission =
+          await LocationPermissionHelper.requestLocationPermission(context);
+
+      if (!hasPermission) {
+        setState(() {
+          _userLocation = 'Location unavailable';
+        });
+        return;
+      }
+
+      final locationResult = await JagmagLocationService.getCurrentLocation();
+
+      if (locationResult['success'] == true) {
+        setState(() {
+          _userLocation = locationResult['address'] ?? 'Location unavailable';
+        });
+      } else {
+        setState(() {
+          _userLocation = 'Location unavailable';
+        });
+      }
     } catch (e) {
+      setState(() {
+        _userLocation = 'Location unavailable';
+      });
+    }
+  }
+
+  Future<void> _refreshLocation() async {
+    setState(() {
+      _userLocation = 'Updating location...';
+    });
+
+    // Check and request permission if needed
+    bool hasPermission =
+        await LocationPermissionHelper.requestLocationPermission(context);
+
+    if (hasPermission) {
+      await _getUserLocation();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location updated'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
       setState(() {
         _userLocation = 'Location unavailable';
       });
@@ -175,20 +221,70 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
       ).copyWith(top: 10, bottom: 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(
-            Icons.location_on,
-            color: Colors.grey[600],
-            size: ResponsiveHelper.getIconSize(context, 20),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _userLocation,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: ResponsiveHelper.getFontSize(context, 16),
-              fontWeight: FontWeight.w500,
+          GestureDetector(
+            onTap: () => _refreshLocation(),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: Colors.grey[600],
+                  size: ResponsiveHelper.getIconSize(context, 20),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _userLocation,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: ResponsiveHelper.getFontSize(context, 16),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.refresh,
+                  color: Colors.grey[400],
+                  size: ResponsiveHelper.getIconSize(context, 16),
+                ),
+              ],
             ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.account_circle,
+              color: Colors.grey[600],
+              size: ResponsiveHelper.getIconSize(context, 24),
+            ),
+            onSelected: (value) async {
+              if (value == 'logout') {
+                try {
+                  await _authService.signOut();
+                  // The AuthWrapper will automatically redirect to public dashboard
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error signing out: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

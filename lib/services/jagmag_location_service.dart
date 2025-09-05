@@ -4,19 +4,22 @@ import 'package:geocoding/geocoding.dart';
 class JagmagLocationService {
   static Future<Map<String, dynamic>> getCurrentLocation() async {
     try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return {'success': false, 'error': 'Location services are disabled'};
+      }
+
       // Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
-      
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          return {
-            'success': false,
-            'error': 'Location permission denied',
-          };
+          return {'success': false, 'error': 'Location permission denied'};
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         return {
           'success': false,
@@ -24,27 +27,17 @@ class JagmagLocationService {
         };
       }
 
-      // Get current position
+      // Get current position with timeout
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 15),
       );
 
       // Get address from coordinates
-      List<Placemark> placemarks = await placemarkFromCoordinates(
+      String address = await getAddressFromCoordinates(
         position.latitude,
         position.longitude,
       );
-
-      String address = 'Unknown Location';
-      if (placemarks.isNotEmpty) {
-        Placemark placemark = placemarks[0];
-        address = [
-          placemark.street,
-          placemark.subLocality,
-          placemark.locality,
-          placemark.administrativeArea,
-        ].where((element) => element != null && element.isNotEmpty).join(', ');
-      }
 
       return {
         'success': true,
@@ -52,12 +45,10 @@ class JagmagLocationService {
         'longitude': position.longitude,
         'address': address,
         'timestamp': DateTime.now(),
+        'accuracy': position.accuracy,
       };
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Error getting location: $e',
-      };
+      return {'success': false, 'error': 'Error getting location: $e'};
     }
   }
 
@@ -73,12 +64,26 @@ class JagmagLocationService {
 
       if (placemarks.isNotEmpty) {
         Placemark placemark = placemarks[0];
-        return [
-          placemark.street,
-          placemark.subLocality,
-          placemark.locality,
-          placemark.administrativeArea,
-        ].where((element) => element != null && element.isNotEmpty).join(', ');
+        List<String> addressParts = [];
+
+        if (placemark.street != null && placemark.street!.isNotEmpty) {
+          addressParts.add(placemark.street!);
+        }
+        if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
+          addressParts.add(placemark.subLocality!);
+        }
+        if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+          addressParts.add(placemark.locality!);
+        }
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
+          addressParts.add(placemark.administrativeArea!);
+        }
+
+        if (addressParts.isNotEmpty) {
+          return addressParts.join(', ');
+        }
       }
 
       return 'Unknown Location';
@@ -94,5 +99,17 @@ class JagmagLocationService {
     double endLng,
   ) async {
     return Geolocator.distanceBetween(startLat, startLng, endLat, endLng);
+  }
+
+  static Future<bool> isLocationServiceEnabled() async {
+    return await Geolocator.isLocationServiceEnabled();
+  }
+
+  static Future<LocationPermission> checkLocationPermission() async {
+    return await Geolocator.checkPermission();
+  }
+
+  static Future<LocationPermission> requestLocationPermission() async {
+    return await Geolocator.requestPermission();
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../utils/responsive_helper.dart';
+import '../utils/location_permission_helper.dart';
 import '../services/jagmag_location_service.dart';
 import '../widgets/jagmag_logo.dart';
 import 'report_details_screen.dart';
@@ -665,20 +666,66 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       return;
     }
 
-    // Get location
-    final locationResult = await JagmagLocationService.getCurrentLocation();
-
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReportDetailsScreen(
-            capturedImages: _capturedImages,
-            recordedVideo: _recordedVideo,
-            locationData: locationResult,
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Getting location...'),
+            ],
           ),
-        ),
-      );
+        );
+      },
+    );
+
+    try {
+      // Check and request location permission
+      bool hasPermission =
+          await LocationPermissionHelper.requestLocationPermission(context);
+
+      if (!hasPermission) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission required to report issues'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Get location
+      final locationResult = await JagmagLocationService.getCurrentLocation();
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReportDetailsScreen(
+              capturedImages: _capturedImages,
+              recordedVideo: _recordedVideo,
+              locationData: locationResult,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error getting location: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

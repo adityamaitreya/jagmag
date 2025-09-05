@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 class JagmagLogo extends StatelessWidget {
   final double size;
-  final Color? color;
 
-  const JagmagLogo({super.key, this.size = 100, this.color});
+  const JagmagLogo({super.key, required this.size});
 
   @override
   Widget build(BuildContext context) {
