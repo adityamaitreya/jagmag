@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/responsive_helper.dart';
-import '../utils/location_permission_helper.dart';
 import '../widgets/placeholder_image_widget.dart';
 import '../widgets/jagmag_logo.dart';
 import '../services/jagmag_auth_service.dart';
@@ -91,17 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _getUserLocation() async {
     try {
-      // Check permission first
-      bool hasPermission =
-          await LocationPermissionHelper.requestLocationPermission(context);
-
-      if (!hasPermission) {
-        setState(() {
-          _userLocation = 'Location unavailable';
-        });
-        return;
-      }
-
       final locationResult = await JagmagLocationService.getCurrentLocation();
 
       if (locationResult['success'] == true) {
@@ -125,25 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _userLocation = 'Updating location...';
     });
 
-    // Check and request permission if needed
-    bool hasPermission =
-        await LocationPermissionHelper.requestLocationPermission(context);
+    await _getUserLocation();
 
-    if (hasPermission) {
-      await _getUserLocation();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location updated'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } else {
-      setState(() {
-        _userLocation = 'Location unavailable';
-      });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location updated'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 

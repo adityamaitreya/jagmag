@@ -10,27 +10,18 @@ class JagmagLocationService {
         return {'success': false, 'error': 'Location services are disabled'};
       }
 
-      // Check location permissions
+      // Check location permissions without requesting
       LocationPermission permission = await Geolocator.checkPermission();
 
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return {'success': false, 'error': 'Location permission denied'};
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        return {
-          'success': false,
-          'error': 'Location permission permanently denied',
-        };
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return {'success': false, 'error': 'Location permission required'};
       }
 
       // Get current position with timeout
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
+        timeLimit: const Duration(seconds: 10),
       );
 
       // Get address from coordinates
