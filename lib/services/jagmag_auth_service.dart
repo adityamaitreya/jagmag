@@ -44,6 +44,19 @@ class JagmagAuthService {
     }
   }
 
+  // Create user with email and password (alias for signup screen)
+  Future<UserCredential> createUserWithEmailAndPassword(
+    String email,
+    String password,
+    String fullName,
+  ) async {
+    return signUpWithEmailAndPassword(
+      email: email,
+      password: password,
+      fullName: fullName,
+    );
+  }
+
   // Sign in with email and password
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
@@ -64,6 +77,14 @@ class JagmagAuthService {
     } catch (e) {
       throw Exception('Failed to sign in: $e');
     }
+  }
+
+  // Sign in with email and password (alias for login screen)
+  Future<UserCredential> signInWithEmailAndPasswordSimple(
+    String email,
+    String password,
+  ) async {
+    return signInWithEmailAndPassword(email: email, password: password);
   }
 
   // Sign in with Google

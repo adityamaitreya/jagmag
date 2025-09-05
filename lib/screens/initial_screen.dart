@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
 import '../widgets/jagmag_logo.dart';
 import 'login_screen.dart';
+import 'signup_screen.dart';
 
 class InitialScreen extends StatelessWidget {
   const InitialScreen({super.key});
@@ -11,7 +12,7 @@ class InitialScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: ResponsiveHelper.getScreenPadding(context),
           child: Column(
             children: [
@@ -93,8 +94,68 @@ class InitialScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Citizen Option Card
-              _buildCitizenCard(context),
+              // Sign Up Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SignupScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    'Sign Up',
+                    style: TextStyle(
+                      fontSize: ResponsiveHelper.getFontSize(context, 18),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Sign In Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue[600],
+                    side: BorderSide(color: Colors.blue[600]!),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: ResponsiveHelper.getFontSize(context, 18),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 30),
 
@@ -113,153 +174,6 @@ class InitialScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCitizenCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue[600]!, Colors.blue[800]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue[200]!,
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Icon and Title Row
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.person, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Join as Citizen',
-                        style: TextStyle(
-                          fontSize: ResponsiveHelper.getFontSize(context, 20),
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'Report issues and track progress',
-                        style: TextStyle(
-                          fontSize: ResponsiveHelper.getFontSize(context, 14),
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white.withOpacity(0.8),
-                  size: 18,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Features List
-            Column(
-              children: [
-                _buildFeatureItem(
-                  context,
-                  Icons.camera_alt,
-                  'Capture issues with photos/videos',
-                ),
-                const SizedBox(height: 8),
-                _buildFeatureItem(
-                  context,
-                  Icons.location_on,
-                  'Auto GPS location tagging',
-                ),
-                const SizedBox(height: 8),
-                _buildFeatureItem(
-                  context,
-                  Icons.psychology,
-                  'AI-powered analysis',
-                ),
-                const SizedBox(height: 8),
-                _buildFeatureItem(
-                  context,
-                  Icons.track_changes,
-                  'Track resolution progress',
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // CTA Button
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  'Get Started',
-                  style: TextStyle(
-                    fontSize: ResponsiveHelper.getFontSize(context, 16),
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue[600],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(BuildContext context, IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white.withOpacity(0.8), size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: ResponsiveHelper.getFontSize(context, 13),
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

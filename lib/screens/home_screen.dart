@@ -6,6 +6,10 @@ import '../widgets/jagmag_logo.dart';
 import '../services/jagmag_auth_service.dart';
 import '../services/jagmag_location_service.dart';
 import 'camera_capture_screen.dart';
+import 'your_issues_screen.dart';
+import 'issues_list_screen.dart';
+import 'map_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,14 +45,16 @@ class _HomeScreenState extends State<HomeScreen> {
       // Get user location
       await _getUserLocation();
 
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error initializing app: $e')));
@@ -64,26 +70,29 @@ class _HomeScreenState extends State<HomeScreen> {
           .limit(5)
           .get();
 
-      setState(() {
-        _recentIssues = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'description': data['description'] ?? '',
-            'urgency': data['urgency'] ?? 'Medium Priority',
-            'status': data['status'] ?? 'Pending',
-            'timestamp': data['timestamp'],
-            'imageUrls': data['imageUrls'] ?? [],
-            'upvotes': data['upvotes'] ?? 0,
-            'downvotes': data['downvotes'] ?? 0,
-          };
-        }).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _recentIssues = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'description': data['description'] ?? '',
+              'urgency': data['urgency'] ?? 'Medium Priority',
+              'status': data['status'] ?? 'Pending',
+              'timestamp': data['timestamp'],
+              'imageUrls': data['imageUrls'] ?? [],
+              'upvotes': data['upvotes'] ?? 0,
+              'downvotes': data['downvotes'] ?? 0,
+            };
+          }).toList();
+        });
+      }
     } catch (e) {
-      // Handle error silently for now
-      setState(() {
-        _recentIssues = [];
-      });
+      if (mounted) {
+        setState(() {
+          _recentIssues = [];
+        });
+      }
     }
   }
 
@@ -91,26 +100,30 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final locationResult = await JagmagLocationService.getCurrentLocation();
 
-      if (locationResult['success'] == true) {
+      if (mounted) {
         setState(() {
-          _userLocation = locationResult['address'] ?? 'Location unavailable';
+          if (locationResult['success'] == true) {
+            _userLocation = locationResult['address'] ?? 'Location unavailable';
+          } else {
+            _userLocation = 'Location unavailable';
+          }
         });
-      } else {
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _userLocation = 'Location unavailable';
         });
       }
-    } catch (e) {
-      setState(() {
-        _userLocation = 'Location unavailable';
-      });
     }
   }
 
   Future<void> _refreshLocation() async {
-    setState(() {
-      _userLocation = 'Updating location...';
-    });
+    if (mounted) {
+      setState(() {
+        _userLocation = 'Updating location...';
+      });
+    }
 
     await _getUserLocation();
 
@@ -201,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => _refreshLocation(),
+            onTap: _refreshLocation,
             child: Row(
               children: [
                 Icon(
@@ -240,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (value == 'logout') {
                 try {
                   await _authService.signOut();
-                  // The AuthWrapper will automatically redirect to public dashboard
+                  // The AuthWrapper will automatically redirect to initial screen
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -257,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Icon(Icons.logout, color: Colors.grey[600]),
                     const SizedBox(width: 8),
-                    Text('Logout'),
+                    const Text('Logout'),
                   ],
                 ),
               ),
@@ -344,7 +357,12 @@ class _HomeScreenState extends State<HomeScreen> {
           flex: 2,
           child: OutlinedButton(
             onPressed: () {
-              // TODO: Navigate to your issues screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const YourIssuesScreen(),
+                ),
+              );
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.grey[700],
@@ -419,24 +437,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          ..._recentIssues
-              .map(
-                (issue) => Column(
-                  children: [
-                    _buildIssueCard(
-                      imageType: _getIssueImageType(issue['urgency']),
-                      title: issue['description'],
-                      location: 'Nearby',
-                      time: _formatTimestamp(issue['timestamp']),
-                      status: issue['status'],
-                      statusColor: _getStatusColor(issue['status']),
-                      statusTextColor: _getStatusTextColor(issue['status']),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              )
-              .toList(),
+          Column(
+            children: _recentIssues.map((issue) {
+              return Column(
+                children: [
+                  _buildIssueCard(
+                    imageType: _getIssueImageType(issue['urgency']),
+                    title: issue['description'],
+                    location: 'Nearby',
+                    time: _formatTimestamp(issue['timestamp']),
+                    status: issue['status'],
+                    statusColor: _getStatusColor(issue['status']),
+                    statusTextColor: _getStatusTextColor(issue['status']),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              );
+            }).toList(),
+          ),
       ],
     );
   }
@@ -620,6 +638,36 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _selectedIndex = index;
           });
+
+          // Handle navigation
+          switch (index) {
+            case 0:
+              // Home - already here
+              break;
+            case 1:
+              // Issues
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const IssuesListScreen(),
+                ),
+              );
+              break;
+            case 2:
+              // Map
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MapScreen()),
+              );
+              break;
+            case 3:
+              // Profile
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+              break;
+          }
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,

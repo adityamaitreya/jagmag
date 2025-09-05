@@ -17,9 +17,9 @@ The complete reporting feature for Jagmag has been implemented with the followin
 
 ### **🤖 AI-Powered Analysis**
 - **Gemini API Integration**: Uses the same API as Nivaran for consistency
-- **Jagmag-Specific Categories**: 20+ categories tailored for streetlight and infrastructure
-- **Automatic Detection**: Analyzes images to determine category, urgency, and description
+- **Automatic Detection**: Analyzes images to determine urgency and description
 - **Risk Assessment**: Provides safety risk evaluation for each issue
+- **Urgency Levels**: High, Medium, and Low priority classification
 
 ### **📝 Report Details Screen**
 - **Exact UI Match**: Matches the provided design image perfectly
@@ -28,67 +28,18 @@ The complete reporting feature for Jagmag has been implemented with the followin
 - **Character Limits**: 500-character limit with live counter
 - **Priority Display**: Shows urgency level with color-coded tags
 
-## 🏗️ **Jagmag-Specific Categories**
+## 🏗️ **Current Features**
 
-### **Streetlight Categories**
-- Streetlight Outage
-- Streetlight Damage  
-- Streetlight Maintenance
-- Streetlight Safety
+### **Image Capture & Analysis**
+- **Camera Integration**: Full camera functionality with permission handling
+- **AI Analysis**: Analyzes images for urgency, description, and risk assessment
+- **Location Services**: GPS integration with address resolution
+- **Report Submission**: Complete reporting workflow
 
-### **Road Infrastructure**
-- Road Surface Damage
-- Road Markings
-- Manhole Covers
-- Road Drainage
-
-### **Traffic Infrastructure**
-- Traffic Signals
-- Traffic Signs
-- Speed Bumps
-- Traffic Barriers
-
-### **Electrical Infrastructure**
-- Electrical Boxes
-- Power Lines
-- Street Electrical
-- Electrical Safety
-
-### **Water Infrastructure**
-- Water Leaks
-- Sewer Issues
-- Water Quality
-- Water Pressure
-
-### **Public Safety**
-- Sidewalk Issues
-- Public Benches
-- Public Lighting
-- Emergency Access
-
-### **Environmental Issues**
-- Garbage & Waste
-- Tree Hazards
-- Air Quality
-- Water Pollution
-
-### **Public Facilities**
-- Bus Stops
-- Public Toilets
-- Playgrounds
-- Public Spaces
-
-### **Communication Infrastructure**
-- Telephone Poles
-- Internet/Phone
-- Public Wi-Fi
-- Emergency Communication
-
-### **Transportation Infrastructure**
-- Bicycle Lanes
-- Pedestrian Crossings
-- Public Transport
-- Parking Infrastructure
+### **Urgency Levels**
+- **High Priority**: Safety hazards, major infrastructure failures
+- **Medium Priority**: Moderate inconvenience, needs attention soon
+- **Low Priority**: Minor issues, can be addressed later
 
 ## 🔧 **Technical Implementation**
 
@@ -98,7 +49,6 @@ The complete reporting feature for Jagmag has been implemented with the followin
 - `lib/services/jagmag_ai_service.dart` - AI analysis service
 - `lib/services/jagmag_location_service.dart` - Location services
 - `lib/models/jagmag_issue_model.dart` - Data model
-- `lib/models/jagmag_category_model.dart` - Category model
 - `lib/secrets.dart` - API keys and configuration
 
 ### **Dependencies Added**
