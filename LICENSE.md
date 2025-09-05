@@ -1,6 +1,6 @@
 Custom License – No Redistribution or Unauthorized Publishing
 
-Copyright (c) 2025 Aryan Patel
+Copyright (c) 2025 SAME
 
 This software is provided for **educational and contribution purposes only**.
 
