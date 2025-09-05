@@ -28,7 +28,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" />
 
     <application
-        android:label="jagmag"
+        android:label="Jagmag"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
@@ -36,7 +36,7 @@
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="jagmag_default_channel" />
+            android:value="nivaran_default_channel" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
@@ -47,7 +47,7 @@
         <!-- App Check Debug Token for manual APK distribution -->
         <meta-data
             android:name="firebase.appcheck.debug_token"
-            android:value="EB4958FE-A4F0-4C91-AB91-74A3C6791FA6" />
+            android:value="1231047E-3829-4417-B789-EFA8DB5BF29E" />
 
 
         <activity

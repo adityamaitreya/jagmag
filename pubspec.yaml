@@ -1,5 +1,5 @@
 name: jagmag
-description: "A new Flutter project."
+description: "Jagmag - Civic Issue Reporting App"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,10 +16,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 2.0.3+4
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.7.2
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   firebase_core: ^2.25.0
   firebase_auth: ^4.17.0
@@ -44,7 +46,7 @@ dependencies:
   uuid: ^4.3.3
   provider: ^6.1.2
   http: ^1.4.0
-  intl: ^0.20.2
+  intl: 0.19.0
   url_launcher: ^6.3.1
   package_info_plus: ^8.3.0
   google_sign_in: ^6.3.0
@@ -71,9 +73,12 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.4.8
+  sqflite_common_ffi: ^2.3.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -81,22 +86,39 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  mockito: ^5.4.4
+  integration_test:
+    sdk: flutter
+  test: any
+  flutter_launcher_icons: ^0.14.3
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/jagmag_logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/
-    - assets/icons/
+    - assets/icon/jagmag_logo.png
+    - assets/icon/google.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/jagmag_logo.png"
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
